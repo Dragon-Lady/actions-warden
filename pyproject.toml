@@ -1,0 +1,46 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "actions-warden"
+version = "0.1.0"
+description = "Read-only auditor for risky or injected GitHub Actions workflow config"
+readme = "README.md"
+license = { file = "LICENSE" }
+authors = [{ name = "Dragon Lady" }]
+keywords = ["security", "github-actions", "ci-cd", "workflow", "supply-chain", "scanner", "devsecops"]
+requires-python = ">=3.9"
+dependencies = []
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Security",
+    "Intended Audience :: Developers",
+    "Intended Audience :: System Administrators",
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+Homepage = "https://github.com/Dragon-Lady/actions-warden"
+Repository = "https://github.com/Dragon-Lady/actions-warden"
+Issues = "https://github.com/Dragon-Lady/actions-warden/issues"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8,<10",
+]
+
+[project.scripts]
+actions-warden = "actions_warden.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+norecursedirs = ["build", "dist", "*.egg-info", ".pytest_cache", "__pycache__"]
