@@ -45,6 +45,7 @@ Exit codes:
 | `untrusted-input-injection` | high | attacker-controllable `github.event.*` / `head_ref` interpolated into the workflow (shell injection in run steps) |
 | `remote-code-in-run` | high | a downloaded script piped straight into a shell |
 | `pull-request-target-head-checkout` | high | `pull_request_target` running with secrets while checking out PR-controlled code ("pwn request") |
+| `checkout-unsafe-pr-opt-out` | high | `actions/checkout` explicitly setting `allow-unsafe-pr-checkout` on privileged PR-adjacent triggers |
 | `self-hosted-on-untrusted` | medium | self-hosted runner reachable by external pull requests |
 | `permissions-write-all` | medium | `write-all` token permissions |
 | `oidc-with-write` | medium | OIDC `id-token: write` combined with `contents: write` |
@@ -52,6 +53,13 @@ Exit codes:
 
 The rules are conservative. A finding means "review this workflow," not "this
 repo is compromised."
+
+GitHub announced safer `actions/checkout@v7` defaults for common
+`pull_request_target` pwn-request patterns on 2026-06-18, with supported major
+tag backports planned for 2026-07-16. Workflows pinned to a minor, patch, or
+full SHA need an explicit upgrade to receive that behavior, and any
+`allow-unsafe-pr-checkout` opt-out should be treated as a deliberate high-risk
+review item.
 
 ## Why text-based, not YAML-parsed
 

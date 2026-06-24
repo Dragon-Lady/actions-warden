@@ -98,6 +98,22 @@ jobs:
     assert any(f["type"] == "workflow-pwn-request" for f in report["findings"])
 
 
+def test_checkout_unsafe_pr_opt_out_is_blocked(tmp_path):
+    write_workflow(tmp_path, "unsafe-checkout.yml", f"""
+on: pull_request_target
+jobs:
+  go:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@{PINNED_SHA}
+        with:
+          allow-unsafe-pr-checkout: true
+""")
+    report = scan_target(str(tmp_path))
+    assert report["risk"] == "blocked"
+    assert any(f["type"] == "workflow-unsafe-pr-checkout-optout" for f in report["findings"])
+
+
 def test_self_hosted_on_pull_request_is_review(tmp_path):
     write_workflow(tmp_path, "sh.yml", f"""
 on:

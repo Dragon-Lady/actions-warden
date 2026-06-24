@@ -100,6 +100,20 @@ RULES = [
         ],
     },
     {
+        "id": "checkout-unsafe-pr-opt-out",
+        "severity": "high",
+        "type": "workflow-unsafe-pr-checkout-optout",
+        "description": (
+            "Workflow explicitly opts actions/checkout out of fork PR checkout "
+            "protection; confirm this pwn-request risk is intentional."
+        ),
+        "file_all": [
+            r"pull_request_target|workflow_run",
+            r"uses:\s*actions/checkout",
+            r"allow-unsafe-pr-checkout\s*:\s*(?:true|['\"]true['\"]|\$\{\{)",
+        ],
+    },
+    {
         "id": "self-hosted-on-untrusted",
         "severity": "medium",
         "type": "workflow-self-hosted-untrusted",

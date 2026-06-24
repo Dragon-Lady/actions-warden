@@ -8,6 +8,10 @@ behaviour described in 2026 GitHub repository-theft reporting:
 - Script-injection guidance (untrusted input in run steps), pinning actions to
   full commit SHAs, least-privilege `GITHUB_TOKEN`, and `pull_request_target`
   risks are all documented in that guide.
+- GitHub changelog, 2026-06-18: `actions/checkout@v7` adds safer defaults for
+  common `pull_request_target` pwn-request checkouts, supported major tags are
+  scheduled for backport on 2026-07-16, and `allow-unsafe-pr-checkout` is the
+  explicit opt-out marker.
 - Post-compromise workflow-injection behaviour (stolen PAT -> mass clone ->
   malicious workflow) is described in vendor analyses of the May 2026 GitHub
   internal-repository breach (tracked as TeamPCP / UNC6780) and related CI/CD
