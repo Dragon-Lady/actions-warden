@@ -12,6 +12,11 @@ behaviour described in 2026 GitHub repository-theft reporting:
   common `pull_request_target` pwn-request checkouts, supported major tags are
   scheduled for backport on 2026-07-16, and `allow-unsafe-pr-checkout` is the
   explicit opt-out marker.
+- GitHub changelog, 2026-06-18: workflow execution protections entered public
+  preview for controlling who and what can trigger workflows. Local scans cannot
+  read the org/repo setting, so Actions Warden flags deployment-triggered
+  workflows for review and blocks privileged deployment-triggered workflows
+  until the setting is confirmed.
 - Post-compromise workflow-injection behaviour (stolen PAT -> mass clone ->
   malicious workflow) is described in vendor analyses of the May 2026 GitHub
   internal-repository breach (tracked as TeamPCP / UNC6780) and related CI/CD

@@ -56,6 +56,16 @@ _PIPE_SHELL = (
     r"(?:iex|invoke-?expression)\b"
 )
 
+_DEPLOYMENT_TRIGGER = (
+    r"(?:^|\n)\s*on\s*:\s*(?:\[[^\]]*\bdeployment(?:_status)?\b[^\]]*\]|[^\n#]*\bdeployment(?:_status)?\b)"
+    r"|(?:^|\n)\s*deployment(?:_status)?\s*:"
+)
+
+_PRIVILEGED_WORKFLOW_SCOPE = (
+    r"secrets\.|id-token:\s*write|permissions:\s*write-all|contents:\s*write|"
+    r"deployments:\s*write|actions:\s*write"
+)
+
 
 RULES = [
     {
@@ -139,6 +149,28 @@ RULES = [
             "confirm this scope is intended."
         ),
         "file_all": [r"id-token:\s*write", r"contents:\s*write"],
+    },
+    {
+        "id": "deployment-trigger-review",
+        "severity": "medium",
+        "type": "workflow-deployment-trigger-review",
+        "description": (
+            "Workflow can be triggered by deployment/deployment_status; confirm "
+            "GitHub workflow execution protections restrict who and what can "
+            "fire this trigger."
+        ),
+        "file_all": [_DEPLOYMENT_TRIGGER],
+    },
+    {
+        "id": "deployment-trigger-privileged",
+        "severity": "high",
+        "type": "workflow-deployment-trigger-privileged",
+        "description": (
+            "Deployment-triggered workflow also references secrets, OIDC, or "
+            "write permissions; restrict deployment-trigger execution before "
+            "trusting this pipeline."
+        ),
+        "file_all": [_DEPLOYMENT_TRIGGER, _PRIVILEGED_WORKFLOW_SCOPE],
     },
     {
         "id": "unpinned-action",

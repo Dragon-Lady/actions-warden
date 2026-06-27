@@ -161,6 +161,39 @@ jobs:
     assert any(f["type"] == "workflow-oidc-write" for f in report["findings"])
 
 
+def test_deployment_trigger_is_review(tmp_path):
+    write_workflow(tmp_path, "deploy.yml", f"""
+on:
+  deployment:
+jobs:
+  go:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@{PINNED_SHA}
+""")
+    report = scan_target(str(tmp_path))
+    assert report["risk"] == "review-needed"
+    assert any(f["type"] == "workflow-deployment-trigger-review" for f in report["findings"])
+
+
+def test_privileged_deployment_trigger_is_blocked(tmp_path):
+    write_workflow(tmp_path, "deploy-secret.yml", """
+on: [deployment, workflow_dispatch]
+permissions:
+  id-token: write
+  contents: write
+jobs:
+  go:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "${{ secrets.DEPLOY_TOKEN }}"
+""")
+    report = scan_target(str(tmp_path))
+    assert report["risk"] == "blocked"
+    assert any(f["type"] == "workflow-deployment-trigger-review" for f in report["findings"])
+    assert any(f["type"] == "workflow-deployment-trigger-privileged" for f in report["findings"])
+
+
 def test_unpinned_action_is_low_review(tmp_path):
     write_workflow(tmp_path, "pin.yml", """
 on: push

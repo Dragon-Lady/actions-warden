@@ -49,6 +49,8 @@ Exit codes:
 | `self-hosted-on-untrusted` | medium | self-hosted runner reachable by external pull requests |
 | `permissions-write-all` | medium | `write-all` token permissions |
 | `oidc-with-write` | medium | OIDC `id-token: write` combined with `contents: write` |
+| `deployment-trigger-review` | medium | workflows triggered by `deployment` / `deployment_status` that need GitHub workflow execution protections reviewed |
+| `deployment-trigger-privileged` | high | deployment-triggered workflows that also reference secrets, OIDC, or write permissions |
 | `unpinned-action` | low | third-party action pinned to a mutable tag/branch instead of a commit SHA |
 
 The rules are conservative. A finding means "review this workflow," not "this
@@ -60,6 +62,12 @@ tag backports planned for 2026-07-16. Workflows pinned to a minor, patch, or
 full SHA need an explicit upgrade to receive that behavior, and any
 `allow-unsafe-pr-checkout` opt-out should be treated as a deliberate high-risk
 review item.
+
+GitHub's workflow execution protections public preview also lets organizations
+restrict which actors and event types can trigger workflows. Treat
+`deployment` / `deployment_status` workflows as review items, and treat
+deployment-triggered workflows that use secrets, OIDC, or write permissions as
+blocked until the repository or organization restricts that trigger.
 
 ## Why text-based, not YAML-parsed
 
