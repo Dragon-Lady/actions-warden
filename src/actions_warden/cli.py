@@ -9,18 +9,21 @@ import json
 import os
 import sys
 
+from . import __version__
 from .scanner import scan_target
 
-HELP_TEXT = """actions-warden
+HELP_TEXT = f"""actions-warden {__version__}
 
 Read-only auditor for risky or injected GitHub Actions workflow config.
 
 Usage:
   actions-warden [target] [--json] [--report report.json]
+  actions-warden --version
 
 Options:
   --json              print JSON report to stdout
   --report <path>     write JSON report to a specific path
+  --version           print package version and exit
   -h, --help          show this help
 
 Exit codes:
@@ -31,12 +34,20 @@ Exit codes:
 
 
 def _parse_args(argv):
-    args = {"target": ".", "json": False, "report_path": "", "help": False}
+    args = {
+        "target": ".",
+        "json": False,
+        "report_path": "",
+        "help": False,
+        "version": False,
+    }
     index = 0
     while index < len(argv):
         arg = argv[index]
         if arg in ("--help", "-h"):
             args["help"] = True
+        elif arg in ("--version", "-V"):
+            args["version"] = True
         elif arg == "--json":
             args["json"] = True
         elif arg == "--report":
@@ -103,6 +114,9 @@ def main(argv=None):
         args = _parse_args(argv)
         if args["help"]:
             print(HELP_TEXT)
+            return 0
+        if args["version"]:
+            print(__version__)
             return 0
 
         report = scan_target(args["target"])

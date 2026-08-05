@@ -56,3 +56,10 @@ def test_report_without_path_exits_one(capsys):
 def test_help_exits_zero(capsys):
     assert main(["--help"]) == 0
     assert "Exit codes" in capsys.readouterr().out
+
+
+def test_version_exits_zero(capsys):
+    from actions_warden import __version__
+
+    assert main(["--version"]) == 0
+    assert capsys.readouterr().out.strip() == __version__

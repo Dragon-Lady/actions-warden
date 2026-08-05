@@ -2,13 +2,19 @@
 
 Read-only auditor for risky or injected GitHub Actions workflow config.
 
+**Current release: `0.1.3`**
+
 After the 2026 wave of repository-theft attacks, a common post-compromise move
 is: steal a token, then inject or tamper with a repo's `.github/workflows/` so
 CI exfiltrates secrets or runs attacker code. Actions Warden scans those workflow
 files for the patterns that enable it.
 
 It does not execute workflows, contact GitHub, modify files, or prove a pipeline
-is safe.
+is safe. No telemetry, no data storage, no automatic remediation — alerts only.
+
+Part of the Dragon Lady open security kit used alongside package/host scanners
+during the August 2026 npm/keyv (ChainDrop / Shai-Hulud) emergency tooling
+updates: when tokens may have been stolen, also audit CI workflows.
 
 ## Install
 
@@ -16,6 +22,9 @@ is safe.
 pipx install actions-warden
 # or
 pip install actions-warden
+# upgrade:
+pipx upgrade actions-warden
+# or: pip install -U actions-warden
 ```
 
 Python 3.9+. No runtime dependencies.
@@ -23,6 +32,7 @@ Python 3.9+. No runtime dependencies.
 ## Usage
 
 ```sh
+actions-warden --version
 actions-warden /path/to/repo
 actions-warden /path/to/repo --json
 actions-warden /path/to/repo --report report.json
