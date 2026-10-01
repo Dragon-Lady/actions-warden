@@ -82,6 +82,67 @@ jobs:
     assert any(f["type"] == "workflow-remote-code-exec" for f in report["findings"])
 
 
+def test_actions_cool_tag_is_blocked_and_reviewed_sha_is_not(tmp_path):
+    write_workflow(tmp_path, "cool.yml", """
+on: issues
+jobs:
+  go:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions-cool/issues-helper@v3
+      - uses: actions-cool/maintain-one-comment@v2
+""")
+    report = scan_target(str(tmp_path))
+    assert report["risk"] == "blocked"
+    hits = [f for f in report["findings"] if f["type"] == "workflow-hijacked-actions-cool-tag"]
+    assert len(hits) == 2
+    assert "Do not revoke tokens until the monitor" in hits[0]["message"]
+    assert any("Do not revoke tokens until the monitor" in line for line in report["guidance"])
+
+    clean = tmp_path / "clean-sha"
+    clean.mkdir()
+    write_workflow(clean, "ok.yml", f"""
+on: push
+jobs:
+  go:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions-cool/issues-helper@{"b" * 40}
+""")
+    clean_report = scan_target(str(clean))
+    assert not any(f["type"] == "workflow-hijacked-actions-cool-tag" for f in clean_report["findings"])
+
+    bad = tmp_path / "bad-sha"
+    bad.mkdir()
+    bad_sha = "147337a919d9" + ("c" * 28)
+    write_workflow(bad, "bad.yml", f"""
+on: push
+jobs:
+  go:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions-cool/issues-helper@{bad_sha}
+""")
+    bad_report = scan_target(str(bad))
+    assert any(f["type"] == "workflow-hijacked-actions-cool-tag" for f in bad_report["findings"])
+
+
+def test_memtensor_sckit_stage0_is_blocked(tmp_path):
+    write_workflow(tmp_path, "sckit.yml", """
+on: push
+jobs:
+  go:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo sckit
+      - run: echo stage0
+""")
+    report = scan_target(str(tmp_path))
+    assert report["risk"] == "blocked"
+    assert any(f["type"] == "workflow-memtensor-sckit-stage0" for f in report["findings"])
+    assert any("Do not run the step" in line for line in report["guidance"])
+
+
 def test_pull_request_target_head_checkout_is_blocked(tmp_path):
     write_workflow(tmp_path, "prt.yml", f"""
 on: pull_request_target

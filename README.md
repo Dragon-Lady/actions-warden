@@ -2,7 +2,7 @@
 
 Read-only auditor for risky or injected GitHub Actions workflow config.
 
-**Current release: `0.1.3`**
+**Current release: `0.1.4`**
 
 After the 2026 wave of repository-theft attacks, a common post-compromise move
 is: steal a token, then inject or tamper with a repo's `.github/workflows/` so
@@ -62,6 +62,8 @@ Exit codes:
 | `deployment-trigger-review` | medium | workflows triggered by `deployment` / `deployment_status` that need GitHub workflow execution protections reviewed |
 | `deployment-trigger-privileged` | high | deployment-triggered workflows that also reference secrets, OIDC, or write permissions |
 | `unpinned-action` | low | third-party action pinned to a mutable tag/branch instead of a commit SHA |
+| `hijacked-actions-cool-tag` | critical | `actions-cool/issues-helper` or `actions-cool/maintain-one-comment` on a tag, branch, or the known hijacked commit. Stop using the tag. Do not revoke tokens until the monitor and wiper are understood |
+| `memtensor-sckit-stage0` | critical | workflow text contains both `sckit` and `stage0`. Treat the runner and publish tokens as exposed. Do not run the step. Notify-only |
 
 The rules are conservative. A finding means "review this workflow," not "this
 repo is compromised."

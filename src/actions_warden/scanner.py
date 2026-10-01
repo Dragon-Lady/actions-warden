@@ -182,7 +182,35 @@ RULES = [
         ),
         "uses_unpinned": True,
     },
+    {
+        "id": "memtensor-sckit-stage0",
+        "severity": "critical",
+        "type": "workflow-memtensor-sckit-stage0",
+        "description": (
+            "Workflow references sckit and stage0 together, the MemTensor "
+            "supplychain.local injected-workflow marker. Treat the runner and "
+            "publish tokens as exposed. Do not run the step. Move to host "
+            "incident response. This scanner is notify-only and does not "
+            "revoke tokens or edit files."
+        ),
+        "file_all": [r"\bsckit\b", r"\bstage0\b"],
+    },
 ]
+
+_ACTIONS_COOL_REPOS = (
+    "actions-cool/issues-helper",
+    "actions-cool/maintain-one-comment",
+)
+_ACTIONS_COOL_BAD_COMMIT_PREFIX = "147337a919d9"
+_ACTIONS_COOL_GUIDANCE = (
+    "SafeDep Mini Shai-Hulud reinfection: every tag of "
+    "actions-cool/issues-helper and actions-cool/maintain-one-comment was "
+    "still malicious as of late September 2026. Stop using the tag. Pin only "
+    "a reviewed pre-hijack commit SHA. Do not revoke tokens until the monitor "
+    "and wiper are understood. Look for .claude/settings.json SessionStart "
+    "running node .claude/setup.mjs and .vscode/tasks.json running the same. "
+    "Treat runners and stolen ghs_ tokens as exposed. Notify-only."
+)
 
 _SHA_RE = re.compile(r"^[0-9a-f]{40}$")
 _USES_RE = re.compile(r"uses:\s*([^\s@'\"]+)@([^\s'\"#]+)")
@@ -231,12 +259,13 @@ def scan_target(target_path=".", max_file_bytes=DEFAULT_MAX_FILE_BYTES):
             "findings": len(deduped),
         },
         "findings": deduped,
-        "guidance": _guidance_for_risk(risk),
+        "guidance": _guidance_for_risk(risk, deduped),
     }
 
 
 def scan_workflow_text(file_path, text, findings):
     lines = text.splitlines()
+    _scan_actions_cool(file_path, lines, findings)
     for rule in RULES:
         if rule.get("uses_unpinned"):
             _scan_unpinned(rule, file_path, lines, findings)
@@ -387,9 +416,44 @@ def _risk_level(findings):
     return "no-known-indicators"
 
 
-def _guidance_for_risk(risk):
+def _scan_actions_cool(file_path, lines, findings):
+    for index, line in enumerate(lines):
+        match = _USES_RE.search(line)
+        if not match:
+            continue
+        repo = match.group(1).strip()
+        ref = match.group(2).strip()
+        if repo not in _ACTIONS_COOL_REPOS:
+            continue
+        bad_commit = ref.lower().startswith(_ACTIONS_COOL_BAD_COMMIT_PREFIX)
+        mutable_ref = _SHA_RE.match(ref.lower()) is None
+        if not bad_commit and not mutable_ref:
+            continue
+        findings.append(
+            _finding(
+                "critical",
+                "workflow-hijacked-actions-cool-tag",
+                file_path,
+                f"{_ACTIONS_COOL_GUIDANCE} Rule: hijacked-actions-cool-tag.",
+                _defang(line.strip()),
+                index + 1,
+            )
+        )
+
+
+def _guidance_for_risk(risk, findings=None):
+    prefix = []
+    finding_types = {item.get("type") for item in (findings or [])}
+    if "workflow-hijacked-actions-cool-tag" in finding_types:
+        prefix.append(_ACTIONS_COOL_GUIDANCE)
+    if "workflow-memtensor-sckit-stage0" in finding_types:
+        prefix.append(
+            "MemTensor sckit stage0 workflow: treat the runner and publish "
+            "tokens as exposed. Do not run the step. Move to host incident "
+            "response. Notify-only."
+        )
     if risk == "blocked":
-        return [
+        return prefix + [
             "Do not merge or re-enable these workflows until each finding is explained.",
             "If a workflow was added or changed unexpectedly, treat it as possible token-theft tampering and rotate affected PATs/secrets.",
             "Pin third-party actions to full commit SHAs and scope GITHUB_TOKEN permissions to least privilege.",

@@ -22,6 +22,12 @@ behaviour described in 2026 GitHub repository-theft reporting:
   internal-repository breach (tracked as TeamPCP / UNC6780) and related CI/CD
   malware writeups.
 
+- SafeDep, Mini Shai-Hulud reinfection of actions-cool/issues-helper and
+  actions-cool/maintain-one-comment. All published tags were still malicious
+  as of late September 2026. https://safedep.io/mini-shai-hulud-reinfection-github-repositories
+- Aikido, Socket, and SafeDep, MemTensor supplychain.local. A workflow that
+  contains both sckit and stage0 is treated as the injected-workflow marker.
+
 This project stores no malware payloads, no raw exfiltration one-liners, and no
 secrets. Command-family markers are assembled from parts at runtime so the
 repository does not ship copy-paste-ready attack strings.
