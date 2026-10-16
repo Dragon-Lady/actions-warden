@@ -2,7 +2,7 @@
 
 Read-only auditor for risky or injected GitHub Actions workflow config.
 
-**Current release: `0.1.4`**
+**Current release: `0.1.5`**
 
 After the 2026 wave of repository-theft attacks, a common post-compromise move
 is: steal a token, then inject or tamper with a repo's `.github/workflows/` so
@@ -44,8 +44,19 @@ files. You can also point it at a single workflow file.
 Exit codes:
 
 - `0`: no blocking workflow risks found
-- `1`: usage or runtime error
+- `1`: usage/runtime error or incomplete scan
 - `2`: blocking workflow risks found (suitable as a CI gate)
+
+Missing or unsupported targets fail explicitly. Unreadable files/directories,
+invalid text, and candidate size limits set `coverage.complete: false` with
+path/reason entries in `coverage.errors`. Blocking findings still return 2;
+otherwise incomplete scans return 1, never 0. Completeness covers only the
+scanner's selected file types and directory policy, not every repository file.
+
+`--report` creates a new report exclusively (mode 0600 on POSIX). Existing
+files, symlinks and hard links are refused, including aliases of scanned inputs.
+Write failures return 1; a partial newly created report may remain and must not
+be treated as a successful result. Choose a fresh output path for each run.
 
 ## What It Flags
 
