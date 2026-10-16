@@ -2,7 +2,7 @@
 
 Read-only auditor for risky or injected GitHub Actions workflow config.
 
-**Current release: `0.1.4`**
+**Current release: `0.1.5`**
 
 After the 2026 wave of repository-theft attacks, a common post-compromise move
 is: steal a token, then inject or tamper with a repo's `.github/workflows/` so
