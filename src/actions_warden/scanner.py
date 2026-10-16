@@ -220,15 +220,23 @@ def scan_target(target_path=".", max_file_bytes=DEFAULT_MAX_FILE_BYTES):
     from . import __version__
 
     root = os.path.abspath(target_path or ".")
+    if not os.path.exists(root):
+        raise ValueError(f"Target does not exist: {root}")
+    if not (os.path.isfile(root) or os.path.isdir(root)):
+        raise ValueError(f"Target is not a regular file or directory: {root}")
     findings = []
     files_scanned = 0
     files_skipped = 0
+    coverage_errors = []
 
-    for file_path in _iter_workflow_files(root):
+    for file_path in _iter_workflow_files(root, coverage_errors):
         size = _safe_size(file_path)
         if size is None:
+            coverage_errors.append({"path": file_path, "reason": "stat-error"})
+            files_skipped += 1
             continue
         if size > max_file_bytes:
+            coverage_errors.append({"path": file_path, "reason": "size-limit"})
             files_skipped += 1
             findings.append(
                 _finding("low", "large-file-skipped", file_path,
@@ -237,6 +245,8 @@ def scan_target(target_path=".", max_file_bytes=DEFAULT_MAX_FILE_BYTES):
             continue
         text = _read_text(file_path)
         if text is None:
+            coverage_errors.append({"path": file_path, "reason": "read-error"})
+            files_skipped += 1
             findings.append(
                 _finding("low", "read-error", file_path,
                          "Could not read file as UTF-8 text.")
@@ -253,6 +263,7 @@ def scan_target(target_path=".", max_file_bytes=DEFAULT_MAX_FILE_BYTES):
         "scannedAt": datetime.now(timezone.utc).isoformat(),
         "target": root,
         "risk": risk,
+        "coverage": {"complete": not coverage_errors, "errors": coverage_errors},
         "summary": {
             "filesScanned": files_scanned,
             "filesSkipped": files_skipped,
@@ -327,7 +338,7 @@ def _scan_unpinned(rule, file_path, lines, findings):
         )
 
 
-def _iter_workflow_files(root):
+def _iter_workflow_files(root, coverage_errors):
     if os.path.isfile(root):
         if _looks_like_workflow_path(root) or root.lower().endswith((".yml", ".yaml")):
             yield root
@@ -339,6 +350,7 @@ def _iter_workflow_files(root):
         try:
             entries = list(os.scandir(current))
         except OSError:
+            coverage_errors.append({"path": current, "reason": "list-error"})
             continue
         for entry in entries:
             try:
@@ -348,6 +360,7 @@ def _iter_workflow_files(root):
                 elif entry.is_file(follow_symlinks=False) and _looks_like_workflow_path(entry.path):
                     yield entry.path
             except OSError:
+                coverage_errors.append({"path": entry.path, "reason": "stat-error"})
                 continue
 
 
