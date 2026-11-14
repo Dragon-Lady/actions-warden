@@ -15,6 +15,8 @@ import os
 import re
 from datetime import datetime, timezone
 
+from .wfx import GUIDANCE as WFX_GUIDANCE, scan_package_scripts, scan_wfx_text
+
 DEFAULT_MAX_FILE_BYTES = 1 * 1024 * 1024
 
 SKIP_DIRS = {
@@ -23,6 +25,7 @@ SKIP_DIRS = {
     ".svn",
     "node_modules",
     ".venv",
+    ".release-venv",
     "venv",
     "dist",
     "build",
@@ -76,7 +79,17 @@ RULES = [
             "Workflow references a secret and an outbound network command; a "
             "secret may be sent off the runner."
         ),
-        "file_all": [r"secrets\.", _OUTBOUND],
+        "file_all": [r"secrets\.|secrets\[|toJSON\s*\(\s*secrets\s*\)", _OUTBOUND],
+    },
+    {
+        "id": "bulk-secret-context",
+        "severity": "high",
+        "type": "workflow-bulk-secret-context",
+        "description": (
+            "Workflow serializes the entire secrets context. This can expose "
+            "credentials the job does not need; pass individual secrets instead."
+        ),
+        "file_all": [r"toJSON\s*\(\s*secrets\s*\)"],
     },
     {
         "id": "untrusted-input-injection",
@@ -220,10 +233,14 @@ def scan_target(target_path=".", max_file_bytes=DEFAULT_MAX_FILE_BYTES):
     from . import __version__
 
     root = os.path.abspath(target_path or ".")
+    if os.path.islink(root):
+        raise ValueError(f"Symlink target is not supported: {root}")
     if not os.path.exists(root):
         raise ValueError(f"Target does not exist: {root}")
     if not (os.path.isfile(root) or os.path.isdir(root)):
         raise ValueError(f"Target is not a regular file or directory: {root}")
+    if os.path.isfile(root) and not (_looks_like_scan_path(root) or root.lower().endswith((".yml", ".yaml"))):
+        raise ValueError(f"Unsupported target file: {root}")
     findings = []
     files_scanned = 0
     files_skipped = 0
@@ -253,7 +270,16 @@ def scan_target(target_path=".", max_file_bytes=DEFAULT_MAX_FILE_BYTES):
             )
             continue
         files_scanned += 1
-        scan_workflow_text(file_path, text, findings)
+        if os.path.basename(file_path).lower() == "package.json":
+            try:
+                findings.extend(scan_package_scripts(file_path, text))
+            except (ValueError, RecursionError):
+                coverage_errors.append({"path": file_path, "reason": "invalid-package-json"})
+        elif file_path.lower().endswith(".sh"):
+            findings.extend(scan_wfx_text(file_path, text))
+        else:
+            scan_workflow_text(file_path, text, findings)
+            findings.extend(scan_wfx_text(file_path, text))
 
     deduped = _dedupe_findings(findings)
     risk = _risk_level(deduped)
@@ -340,7 +366,7 @@ def _scan_unpinned(rule, file_path, lines, findings):
 
 def _iter_workflow_files(root, coverage_errors):
     if os.path.isfile(root):
-        if _looks_like_workflow_path(root) or root.lower().endswith((".yml", ".yaml")):
+        if _looks_like_scan_path(root) or root.lower().endswith((".yml", ".yaml")):
             yield root
         return
 
@@ -354,14 +380,24 @@ def _iter_workflow_files(root, coverage_errors):
             continue
         for entry in entries:
             try:
-                if entry.is_dir(follow_symlinks=False):
+                if entry.name in SKIP_DIRS:
+                    continue
+                if entry.is_symlink():
+                    if _looks_like_scan_path(entry.path) or entry.is_dir():
+                        coverage_errors.append({"path": entry.path, "reason": "symlink-skipped"})
+                elif entry.is_dir(follow_symlinks=False):
                     if entry.name not in SKIP_DIRS:
                         stack.append(entry.path)
-                elif entry.is_file(follow_symlinks=False) and _looks_like_workflow_path(entry.path):
+                elif entry.is_file(follow_symlinks=False) and _looks_like_scan_path(entry.path):
                     yield entry.path
             except OSError:
                 coverage_errors.append({"path": entry.path, "reason": "stat-error"})
                 continue
+
+
+def _looks_like_scan_path(path):
+    base = os.path.basename(path).lower()
+    return base == "package.json" or base.endswith(".sh") or _looks_like_workflow_path(path)
 
 
 def _looks_like_workflow_path(path):
@@ -457,6 +493,8 @@ def _scan_actions_cool(file_path, lines, findings):
 def _guidance_for_risk(risk, findings=None):
     prefix = []
     finding_types = {item.get("type") for item in (findings or [])}
+    if any(kind and kind.startswith("wfx-") for kind in finding_types):
+        prefix.extend(WFX_GUIDANCE)
     if "workflow-hijacked-actions-cool-tag" in finding_types:
         prefix.append(_ACTIONS_COOL_GUIDANCE)
     if "workflow-memtensor-sckit-stage0" in finding_types:

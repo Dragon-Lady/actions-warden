@@ -2,7 +2,7 @@
 
 Read-only auditor for risky or injected GitHub Actions workflow config.
 
-**Current release: `0.1.5`**
+**Current release: `0.1.6`**
 
 After the 2026 wave of repository-theft attacks, a common post-compromise move
 is: steal a token, then inject or tamper with a repo's `.github/workflows/` so
@@ -38,8 +38,13 @@ actions-warden /path/to/repo --json
 actions-warden /path/to/repo --report report.json
 ```
 
-It scans `.github/workflows/*.yml|*.yaml` and composite `action.yml|action.yaml`
-files. You can also point it at a single workflow file.
+It scans `.github/workflows/*.yml|*.yaml`, composite `action.yml|action.yaml`,
+`package.json` scripts, and `.sh` files. You can also point it at one of those
+files. Dependency, build, and Git object directories remain outside the scan.
+
+Version 0.1.6 adds local checks for **wfx-loot**, including the npm-script
+delivery path that can run without a workflow change. See the
+[campaign response guide](docs/wfx-loot.md) for history checks and response limits.
 
 Exit codes:
 
@@ -63,6 +68,10 @@ be treated as a successful result. Choose a fresh output path for each run.
 | Rule | Severity | What it catches |
 |------|----------|-----------------|
 | `secret-exfiltration` | critical | a secret reference alongside an outbound network command |
+| `bulk-secret-context` | high | serialization of the whole secrets context, including `toJSON(secrets)` |
+| `wfx-payload-markers` | critical | combined payload configuration/staging markers in workflows or shell scripts, including configurations with no callback address |
+| `wfx-callback-indicator` | high | a reported campaign address alongside a callback or network command |
+| `wfx-npm-hidden-helper` | high | an npm script invokes a hidden `.ci-xxxxxx.sh` helper matching the reported filename pattern |
 | `untrusted-input-injection` | high | attacker-controllable `github.event.*` / `head_ref` interpolated into the workflow (shell injection in run steps) |
 | `remote-code-in-run` | high | a downloaded script piped straight into a shell |
 | `pull-request-target-head-checkout` | high | `pull_request_target` running with secrets while checking out PR-controlled code ("pwn request") |
@@ -101,7 +110,14 @@ flag co-occurrence within a file rather than within a single job.
 
 ## Scope Limits
 
-This is a narrow CI/CD config scanner. It does not scan dependencies or packages
+This is a narrow CI/CD source scanner. It does not scan installed dependencies or packages
 (see a dependency/supply-chain scanner for that), does not resolve reusable or
 remote workflows, and will not catch every possible injection or obfuscated
 payload.
+
+The new shell and npm checks are structural heuristics, not shell execution or
+a full shell parser. A filename match needs review; it does not establish theft.
+The scanner does not fetch Git history or query GitHub, cloud accounts, or past
+network traffic. A clean current tree cannot clear a reverted attack. Skipped
+candidate symlinks, malformed package metadata, and unreadable/oversized
+candidates produce incomplete coverage rather than a successful clean result.
