@@ -106,8 +106,9 @@ def test_malformed_package_json_is_incomplete(tmp_path, capsys, text):
     assert report["coverage"]["errors"][0]["reason"] == "invalid-package-json"
 
 
-def test_node_modules_stays_outside_scope(tmp_path):
-    write(tmp_path, "node_modules/example/package.json", '{"scripts":{"postinstall":"sh ./.ci-abcdef.sh"}}')
+@pytest.mark.parametrize("excluded", ["node_modules", ".release-venv"])
+def test_dependency_directories_stay_outside_scope(tmp_path, excluded):
+    write(tmp_path, excluded + "/example/package.json", '{"scripts":{"postinstall":"sh ./.ci-abcdef.sh"}}')
     write(tmp_path, "package.json", '{}')
     report = scan_target(str(tmp_path))
     assert report["summary"]["filesScanned"] == 1

@@ -25,6 +25,7 @@ SKIP_DIRS = {
     ".svn",
     "node_modules",
     ".venv",
+    ".release-venv",
     "venv",
     "dist",
     "build",
