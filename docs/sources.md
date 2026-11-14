@@ -31,3 +31,8 @@ behaviour described in 2026 GitHub repository-theft reporting:
 This project stores no malware payloads, no raw exfiltration one-liners, and no
 secrets. Command-family markers are assembled from parts at runtime so the
 repository does not ship copy-paste-ready attack strings.
+
+The November 2026 wfx-loot additions use Aikido, GitGuardian and SafeDep primary
+research. Exact source links, scope and response boundaries are recorded in
+[the campaign guide](wfx-loot.md). These are dated static indicators, not a
+claim that current-file scanning can rule out historical compromise.

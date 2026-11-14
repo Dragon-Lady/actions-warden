@@ -75,7 +75,7 @@ def _print_human(report, written_report_path):
     print("Actions Warden")
     print(f"Target: {report['target']}")
     print(f"Risk: {report['risk']}")
-    print(f"Scanned: {report['summary']['filesScanned']} workflow files")
+    print(f"Scanned: {report['summary']['filesScanned']} workflow, manifest and shell files")
     print(f"Findings: {report['summary']['findings']}")
     if not report["coverage"]["complete"]:
         print("INCOMPLETE: some inputs could not be inspected; this is not a passed scan.")
