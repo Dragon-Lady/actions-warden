@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.1.7
+
+- Recognize hidden npm helpers followed immediately by shell redirection,
+  including quoted helper filenames.
+- Respect quotes, comments and escaped separators when locating helper commands;
+  preserve detection inside active command substitutions.
+- Add scanner and CLI regression coverage for missed helpers, inert examples,
+  source preservation and source-text omission. These are detection accuracy
+  fixes, not evidence that any scanned repository was compromised.
+
 ## 0.1.6
 
 - Inspect npm scripts and shell files for wfx-loot delivery and payload markers,

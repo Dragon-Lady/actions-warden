@@ -6,17 +6,103 @@ import re
 _CONFIG = re.compile(r"\bWF_(?:CALLBACK2?|CTOKEN|EXFIL_[A-Z_]+|PRIVATE)\b")
 _STAGING = re.compile(r"\.wfx-|\bwfx-loot-|WFX-BEGIN|\bwfx-ci-")
 _HELPER = r"(?:\./)?\.ci-[a-z0-9]{6}\.sh"
-# Command positions only: an echo, description, or unrelated dependency name is
-# not evidence of an install hook. This is not a general shell parser.
+# Match only at lexical command starts supplied by _command_starts. Quoted
+# filenames must close before a delimiter; operators inside a filename are data.
 _HELPER_COMMAND = re.compile(
-    r"(?:^|[;&|\n]|\$\()\s*(?:(?:sh|bash|dash)\s+(?:-[a-zA-Z]+\s+)*)?"
-    r"[\"']?" + _HELPER + r"[\"']?(?=\s|[;&|)]|$)"
+    r"[ \t]*(?:(?:sh|bash|dash)[ \t]+(?:-[a-zA-Z]+[ \t]+)*)?"
+    r"(?P<quote>[\"']?)" + _HELPER + r"(?P=quote)(?=\s|[;&|)<>]|$)"
 )
 _C2 = re.compile(
     r"(?<![\w.])(?:194\.150\.166\.244|18\.143\.168\.96|"
     r"153\.75\.82\.159|45\.61\.182\.54)(?![\w.])"
 )
 _CALLBACK = re.compile(r"\bWF_CALLBACK2?\b|\b(?:c" + r"url|w" + r"get)\b")
+
+
+def _command_starts(text):
+    """Locate simple shell command starts without executing or expanding text.
+
+    Quotes, escapes and comments suppress literal separators. Command
+    substitutions introduce their own quote context, including inside double
+    quotes. This is a bounded lexical check, not a general shell parser.
+    """
+    yield 0
+    index = 0
+    quote = ""
+    word_start = True
+    contexts = []
+    while index < len(text):
+        char = text[index]
+        if quote == "'":
+            if char == "'":
+                quote = ""
+            index += 1
+            continue
+        if char == "\\" and index + 1 < len(text):
+            following = text[index + 1]
+            if not quote or following in '$`"\\\n':
+                if following != "\n":
+                    word_start = False
+                index += 2
+                continue
+        if char == '"':
+            quote = "" if quote else '"'
+            word_start = False
+            index += 1
+            continue
+        if char == "'" and not quote:
+            quote = "'"
+            word_start = False
+            index += 1
+            continue
+        if char == "#" and not quote and word_start:
+            newline = text.find("\n", index)
+            if newline == -1:
+                return
+            index = newline
+            continue
+        if text.startswith("$(", index):
+            contexts.append((quote, ")"))
+            quote = ""
+            word_start = True
+            index += 2
+            yield index
+            continue
+        if char == "`":
+            if contexts and contexts[-1][1] == "`":
+                quote, _ = contexts.pop()
+                word_start = False
+                index += 1
+            else:
+                contexts.append((quote, "`"))
+                quote = ""
+                word_start = True
+                index += 1
+                yield index
+            continue
+        if quote:
+            index += 1
+            continue
+        if char == "(":
+            contexts.append(("", ")"))
+            word_start = True
+            index += 1
+            yield index
+            continue
+        if char == ")" and contexts and contexts[-1][1] == ")":
+            quote, _ = contexts.pop()
+            word_start = False
+        elif text[index:index + 2] in (">&", "<&", ">|", "&>"):
+            # These are redirection operators, not fresh commands at & or |.
+            word_start = True
+            index += 2
+            continue
+        elif char in ";&|\n":
+            word_start = True
+            yield index + 1
+        else:
+            word_start = char.isspace() or char in "<>"
+        index += 1
 
 
 def _finding(path, kind, message, severity="high"):
@@ -60,7 +146,7 @@ def scan_package_scripts(path, text):
         raise ValueError("package scripts are not strings")
     found = []
     for command in scripts.values():
-        if _HELPER_COMMAND.search(command):
+        if any(_HELPER_COMMAND.match(command, start) for start in _command_starts(command)):
             found.append(_finding(
                 path, "wfx-npm-hidden-helper",
                 "An npm script invokes a hidden shell helper with the wfx-loot "
