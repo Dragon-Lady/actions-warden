@@ -25,6 +25,20 @@ def types(report):
     'sh ./.ci-abcdef.sh >/dev/null 2>&1; node build.js',
     'node build.js; bash -e ./.ci-abcdef.sh',
     'echo $(sh ./.ci-abcdef.sh)',
+    'sh ./.ci-abcdef.sh>/dev/null 2>&1',
+    'sh ./.ci-abcdef.sh>>output.log',
+    'sh ./.ci-abcdef.sh<input.txt',
+    'sh ./.ci-abcdef.sh<>input.txt',
+    'sh ./.ci-abcdef.sh>|output.log',
+    'bash -e "./.ci-abcdef.sh">/dev/null',
+    "'./.ci-abcdef.sh'>>output.log",
+    './.ci-abcdef.sh&>output.log',
+    'echo "$(sh ./.ci-abcdef.sh>/dev/null)"',
+    "echo 'example; sh ./.ci-abcdef.sh'; sh ./.ci-abcdef.sh",
+    '# example; sh ./.ci-abcdef.sh\nsh ./.ci-abcdef.sh',
+    'echo word#suffix; sh ./.ci-abcdef.sh',
+    'echo "# literal"; sh ./.ci-abcdef.sh',
+    "echo \"$(echo 'inert; sh ./.ci-abcdef.sh'; sh ./.ci-abcdef.sh)\"",
 ])
 @pytest.mark.parametrize("script", ["postinstall", "build", "prepare"])
 def test_hidden_helper_in_npm_scripts(tmp_path, command, script):
@@ -50,6 +64,54 @@ def test_hidden_helper_in_npm_scripts(tmp_path, command, script):
 def test_ordinary_manifests_and_lookalikes(tmp_path, data):
     write(tmp_path, "package.json", json.dumps(data))
     assert scan_target(str(tmp_path))["findings"] == []
+
+
+@pytest.mark.parametrize("command", [
+    "echo 'example; sh ./.ci-abcdef.sh'",
+    'echo "example; sh ./.ci-abcdef.sh"',
+    "echo 'example && sh ./.ci-abcdef.sh'",
+    'echo "example | sh ./.ci-abcdef.sh"',
+    "echo 'example\nsh ./.ci-abcdef.sh'",
+    'echo "example\nsh ./.ci-abcdef.sh"',
+    '# example; sh ./.ci-abcdef.sh',
+    'echo ok # example; sh ./.ci-abcdef.sh',
+    'echo ok; # example; sh ./.ci-abcdef.sh',
+    "echo '$(sh ./.ci-abcdef.sh)'",
+    r'echo "\$(sh ./.ci-abcdef.sh)"',
+    r'echo example\; sh ./.ci-abcdef.sh',
+    r'echo example\& sh ./.ci-abcdef.sh',
+    r'echo example\| sh ./.ci-abcdef.sh',
+    'echo example\\\nsh ./.ci-abcdef.sh',
+    'echo ";" sh ./.ci-abcdef.sh',
+    "echo '#'; echo 'example; sh ./.ci-abcdef.sh'",
+    'echo "escaped \\\"quote; sh ./.ci-abcdef.sh"',
+    "sh './.ci-abcdef.sh; example'",
+    'sh "./.ci-abcdef.sh>example"',
+    "sh './.ci-abcdef.sh.bak'",
+    'echo ok>&sh ./.ci-abcdef.sh',
+    'echo ok&>sh ./.ci-abcdef.sh',
+    'echo ok>|sh ./.ci-abcdef.sh',
+    "echo \"$(echo 'inert; sh ./.ci-abcdef.sh'); sh ./.ci-abcdef.sh)\"",
+])
+def test_inert_shell_examples_do_not_block(tmp_path, capsys, command):
+    target = write(tmp_path, "package.json", json.dumps({"scripts": {"test": command}}))
+    before = target.read_bytes(), target.stat().st_mtime_ns
+    assert main([str(target), "--json"]) == 0
+    report = json.loads(capsys.readouterr().out)
+    assert report["findings"] == []
+    assert report["risk"] == "no-known-indicators"
+    assert report["coverage"]["complete"]
+    assert (target.read_bytes(), target.stat().st_mtime_ns) == before
+
+
+def test_adjacent_redirection_blocks_cli_without_echoing_source(tmp_path, capsys):
+    command = 'sh ./.ci-abcdef.sh>/dev/null 2>&1'
+    target = write(tmp_path, "package.json", json.dumps({"scripts": {"postinstall": command}}))
+    assert main([str(target), "--json"]) == 2
+    report = json.loads(capsys.readouterr().out)
+    assert "wfx-npm-hidden-helper" in types(report)
+    assert report["coverage"]["complete"]
+    assert command not in json.dumps(report)
 
 
 @pytest.mark.parametrize("path", [".github/workflows/test.yml", "action.yaml", "start.sh", "nested/deploy.sh"])

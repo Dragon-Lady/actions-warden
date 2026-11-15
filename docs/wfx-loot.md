@@ -25,6 +25,13 @@ unreadable candidates and skipped candidate symlinks produce incomplete
 coverage. New campaign findings omit source snippets to avoid copying secrets
 into the report. Existing workflow rules keep their established output format.
 
+Version 0.1.7 recognizes adjacent shell redirection after helper filenames and
+ignores separators inside quoted text, escapes and comments. Commands in `$(...)`
+substitutions are still inspected, including within double quotes. This remains
+a check for simple shell command forms, not a full shell grammar or evaluator:
+aliases, dynamically constructed commands, shell command strings, parameter and
+arithmetic expansion, and here-document bodies are not fully modeled.
+
 ## Review the history as well
 
 The main wave began on November 10; GitGuardian describes a precursor from

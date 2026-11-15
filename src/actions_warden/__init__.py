@@ -1,6 +1,6 @@
 """Read-only auditor for risky or injected GitHub Actions workflow config."""
 
-__version__ = "0.1.6"
+__version__ = "0.1.7"
 
 from .scanner import RULES, scan_target, scan_workflow_text
 

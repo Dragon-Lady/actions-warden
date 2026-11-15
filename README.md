@@ -2,7 +2,7 @@
 
 Read-only auditor for risky or injected GitHub Actions workflow config.
 
-**Current release: `0.1.6`**
+**Current release: `0.1.7`**
 
 After the 2026 wave of repository-theft attacks, a common post-compromise move
 is: steal a token, then inject or tamper with a repo's `.github/workflows/` so
@@ -45,6 +45,8 @@ files. Dependency, build, and Git object directories remain outside the scan.
 Version 0.1.6 adds local checks for **wfx-loot**, including the npm-script
 delivery path that can run without a workflow change. See the
 [campaign response guide](docs/wfx-loot.md) for history checks and response limits.
+Version 0.1.7 fixes hidden-helper detection with adjacent redirection and stops
+quoted or commented examples from creating false command boundaries.
 
 Exit codes:
 
